@@ -1,0 +1,36 @@
+.modal-backdrop-custom {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display:flex; align-items:center; justify-content:center; z-index:1050;
+}
+.modal-dialog-custom {
+  background:#fff; padding:20px; border-radius:8px; width:720px; max-width:95%;
+  box-shadow:0 6px 24px rgba(0,0,0,0.2);
+}
+.suspect-grid-modal {
+  display:grid;
+  grid-template-columns: repeat(auto-fill,minmax(120px,1fr));
+  gap:12px;
+}
+.suspect-tile { cursor:pointer; text-align:center; }
+.suspect-thumb {
+  width:120px; height:120px; margin:0 auto 8px; border-radius:8px;
+  background-size:cover; background-position:center; box-shadow:0 2px 8px rgba(0,0,0,0.12);
+}
+.suspect-name { font-weight:600; }
+
+.modal-overlay-custom {
+  background: rgba(0,0,0,0.6);
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content-custom {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+}
