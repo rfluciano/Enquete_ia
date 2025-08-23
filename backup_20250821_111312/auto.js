@@ -1,4 +1,0 @@
-﻿'use strict';
-
-require('./shim')();
-
