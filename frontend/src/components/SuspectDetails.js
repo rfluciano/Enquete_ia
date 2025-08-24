@@ -14,7 +14,7 @@ export default function SuspectDetails({ suspect, onClose }) {
     } else {
       setDetails(null);
     }
-  }, [refresh, suspect]);
+  }, [suspect]);
 
   const refresh = () => {
     const suspectId = suspect.id || suspect;
