@@ -14,7 +14,7 @@ export default function SuspectDetails({ suspect, onClose }) {
     } else {
       setDetails(null);
     }
-  }, [suspect]);
+  }, [refresh, suspect]);
 
   const refresh = () => {
     const suspectId = suspect.id || suspect;
@@ -87,23 +87,23 @@ export default function SuspectDetails({ suspect, onClose }) {
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                 />
-                <button
+                {/* <button
                   className="btn btn-sm btn-success me-1"
                   onClick={() => handleUpdateFact(it)}
                 >
                   ✔
-                </button>
-                <button
+                </button> */}
+                {/* <button
                   className="btn btn-sm btn-secondary"
                   onClick={() => setEditingFact(null)}
                 >
                   ✕
-                </button>
+                </button> */}
               </>
             ) : (
               <>
                 {it}{" "}
-                <button
+                {/* <button
                   className="btn btn-sm btn-outline-primary me-1"
                   onClick={() => {
                     setEditingFact(it);
@@ -111,13 +111,13 @@ export default function SuspectDetails({ suspect, onClose }) {
                   }}
                 >
                   ✎
-                </button>
-                <button
+                </button> */}
+                {/* <button
                   className="btn btn-sm btn-outline-danger"
                   onClick={() => handleDeleteFact(it)}
                 >
                   ✕
-                </button>
+                </button> */}
               </>
             )}
           </span>
@@ -156,7 +156,7 @@ export default function SuspectDetails({ suspect, onClose }) {
           {renderList("Transactions", details.transactions)}
 
           <hr />
-          <div className="d-flex mt-3">
+          {/* <div className="d-flex mt-3">
             <input
               className="form-control me-2"
               placeholder="Nouveau fait..."
@@ -166,7 +166,7 @@ export default function SuspectDetails({ suspect, onClose }) {
             <button className="btn btn-primary" onClick={handleAddFact}>
               Ajouter
             </button>
-          </div>
+          </div> */}
         </div>
       ) : (
         <p>Chargement...</p>

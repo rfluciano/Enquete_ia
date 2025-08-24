@@ -11,15 +11,15 @@ export default function Header() {
       </div>
 
       <nav className="ms-auto d-flex align-items-center gap-2">
-        <button type="button" className="btn btn-link text-decoration-none" onClick={()=>alert('Profil')}>
+        {/* <button type="button" className="btn btn-link text-decoration-none" onClick={()=>alert('Profil')}>
           Profil
-        </button>
+        </button> */}
         <button type="button" className="btn btn-link text-decoration-none" onClick={()=>setShowSettings(true)}>
           Parametres
         </button>
-        <button type="button" className="btn btn-link text-decoration-none" onClick={()=>alert('Historiques')}>
+        {/* <button type="button" className="btn btn-link text-decoration-none" onClick={()=>alert('Historiques')}>
           Historiques
-        </button>
+        </button> */}
       </nav>
 
       <SettingsModal show={showSettings} onClose={() => setShowSettings(false)} />

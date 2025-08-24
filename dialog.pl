@@ -1,112 +1,104 @@
-:- use_module(library(readutil)).   % read_line_to_string/2
-:- use_module('./db.pl').
-:- use_module('./inference.pl').
+:- module(dialog, [ask/0, ask_nl/0]).
+:- use_module(facts).
+:- use_module(inference).
 
-% normalisation
-normalize_answer(Ans, yes) :-
-    string_lower(Ans, L), sub_string(L,0,1,_,C), memberchk(C, ["o","y","1"]).
-normalize_answer(Ans, no) :-
-    string_lower(Ans, L), sub_string(L,0,1,_,C), memberchk(C, ["n","0"]).
+% =====================
+% Interface principale
+% =====================
 
-ask_open(Prompt, Ans) :-
-    format('~w : ', [Prompt]),
-    read_line_to_string(user_input, Ans).
+ask :-
+    writeln("Entrez une question du type:"),
+    writeln(" - est-ce que [suspect] est coupable pour [crime]"),
+    writeln(" - quitter"),
+    read_line_to_string(user_input, input),
+    handle_input(input).
 
-ask_yesno_fuzzy(Prompt, Fact, Source) :-
-    format('~w (o/n) : ', [Prompt]),
-    read_line_to_string(user_input, R0),
-    ( normalize_answer(R0, yes) ->
-        ( nonvar(Fact) -> record_fact(Fact, Source) ; true ),
-        record_history(asked(Prompt)-yes)
-    ; normalize_answer(R0, no) ->
-        ask_open('Pourquoi ?', Why),
-        ( nonvar(Fact) -> assertz(reason(Fact, Why)), assertz(dialog_line(Prompt-no(Why))) ; true ),
-        record_history(asked(Prompt)-no(Why))
-    ; writeln('Reponse non comprise, reessayer.'), ask_yesno_fuzzy(Prompt, Fact, Source)
+ask_nl :-
+    writeln("Question (ex: \"mary escroquerie\") ou taper quitter:"),
+    read_line_to_string(user_input, Input),
+    handle_simple_input(Input).
+
+% =====================
+% Gestion des questions
+% =====================
+
+handle_input("quitter") :- !, writeln("Au revoir !").
+handle_input(Input) :-
+    split_string(Input, " ", "", Words),
+    (   parse_question(Words, Suspect, Crime)
+    ->  verdict(Suspect, Crime)
+    ;   writeln("❌ Je n'ai pas compris la question."),
+        ask
     ).
 
-ask_choice(Prompt, Options, Choice) :-
-    format('~w~n', [Prompt]),
-    list_choices(Options,1),
-    format('Numero : '),
-    read_line_to_string(user_input, R0),
-    catch(number_string(N,R0),_,fail),
-    nth1(N, Options, Choice), !.
-ask_choice(_,_,_) :- writeln('Choix invalide.'), fail.
+handle_simple_input("quitter") :- !, writeln("Au revoir !").
+handle_simple_input(Input) :-
+    split_string(Input, " ", "", [SuspectStr, CrimeStr | _]),
+    atom_string(Suspect, SuspectStr),
+    atom_string(Crime, CrimeStr),
+    verdict(Suspect, Crime),
+    ask_nl.
 
-list_choices([], _).
-list_choices([H|T], N) :-
-    format('  ~d) ~w~n', [N,H]),
-    N2 is N+1, list_choices(T, N2).
+% =====================
+% Analyse des questions
+% =====================
+
+parse_question(Words, Suspect, Crime) :-
+    append(_, [S, "est", "coupable", "pour", C], Words),
+    atom_string(Suspect, S),
+    atom_string(Crime, C).
+
+% =====================
+% Generation du verdict
+% =====================
+
+verdict(S, C) :-
+    (   prove(S, C)
+    ->  writeln("⚖️ Conclusion: Coupable."), explain_with_sources(S, C)
+    ;   writeln("⚖️ Conclusion: Non coupable (preuves insuffisantes)."), explain_with_sources(S, C)
+    ).
+
+% =====================
+% Explication humaine
+% =====================
 
 explain_with_sources(S, C) :-
     supporting_facts(S, C, Facts),
-    format('Preuves: ~w~n', [Facts]),
     missing_evidence(S, C, Miss),
-    format('Manquantes: ~w~n', [Miss]).
 
-% poser toutes les questions necessaires
-ensure_all_questions(S, Crime) :-
-    ( has_alibi(S, Crime) -> true
-    ; format(atom(QA),'~w a-t-il/elle un alibi pour ~w ?', [S, Crime]),
-      ask_yesno_fuzzy(QA, has_alibi(S, Crime), user)
+    writeln(""),
+    format("📌 Voici les elements concernant ~w dans l'affaire ~w :~n", [S, C]),
+
+    ( Facts = [] ->
+        writeln(" - Aucune preuve trouvee pour l'instant.")
+    ; writeln(" ✅ Preuves disponibles :"),
+      forall(member(F, Facts), describe_fact(F))
     ),
-    ( Crime = vol ->
-        format(atom(QM),'~w a-t-il/elle un motif pour vol ?', [S]),
-        ask_yesno_fuzzy(QM, has_motive(S, vol), user),
-        format(atom(QP),'~w etait-il/elle pres du lieu du vol ?', [S]),
-        ask_yesno_fuzzy(QP, was_near_crime_scene(S, vol), user),
-        format(atom(QF),'empreintes de ~w sur l\'arme du vol ?', [S]),
-        ask_yesno_fuzzy(QF, has_fingerprint_on_weapon(S, vol), user)
-    ; Crime = assassinat ->
-        format(atom(QM2),'~w a-t-il/elle un motif pour assassinat ?', [S]),
-        ask_yesno_fuzzy(QM2, has_motive(S, assassinat), user),
-        format(atom(QP2),'~w etait-il/elle pres du lieu de l\'assassinat ?', [S]),
-        ask_yesno_fuzzy(QP2, was_near_crime_scene(S, assassinat), user),
-        ( ask_choice('preuve ?', ['empreinte','temoin','aucun'], Choice) ->
-            ( Choice = 'empreinte' -> record_fact(has_fingerprint_on_weapon(S, assassinat), user)
-            ; Choice = 'temoin' -> record_fact(eyewitness_identification(S, assassinat), user)
-            ; true)
-        ; true )
-    ; Crime = escroquerie ->
-        format(atom(QB),'transaction bancaire frauduleuse de ~w ?', [S]),
-        ask_yesno_fuzzy(QB, has_bank_transaction(S, escroquerie), user),
-        format(atom(QI),'~w possede-t-il/elle une fausse identite ?', [S]),
-        ask_yesno_fuzzy(QI, owns_fake_identity(S, escroquerie), user)
-    ; true ).
 
-% entree en langage naturel simple
-ask_nl :-
-    format('Question (ex: "est-ce que mary est coupable pour assassinat")~n> '),
-    read_line_to_string(user_input, Input),
-    parse_nl(Input, Suspect, Crime),
-    format('Interrogation pour ~w / ~w~n', [Suspect, Crime]),
-    ensure_all_questions(Suspect, Crime),
-    ( has_alibi(Suspect, Crime) ->
-        format('Conclusion: not_guilty (alibi connu).~n'), explain_with_sources(Suspect, Crime)
-    ; ( is_guilty(Suspect, Crime) ->
-            format('Conclusion: guilty.~n'), explain_with_sources(Suspect, Crime)
-      ; format('Conclusion: not_guilty (preuves insuffisantes).~n'), explain_with_sources(Suspect, Crime)
-      )
-    ).
-
-% minimal parse helper (cherche suspect et type)
-parse_nl(Input, Suspect, Crime) :-
-    string_lower(Input, L),
-    findall(S, suspect(S), Ss),
-    maplist(atom_string, Ss, SStrs),
-    include({L}/[X]>>sub_string(L, _, _, _, X), SStrs, Matches),
-    ( Matches = [Sname|_] -> atom_string(Suspect, Sname)
-    ; format('Quel suspect (choisir parmi: ~w) ?~n', [Ss]),
-      list_choices(Ss,1),
-      read_line_to_string(user_input,R0),
-      catch(number_string(N,R0),_,fail), nth1(N,Ss,Suspect)
+    ( Miss = [] ->
+        writeln(" 🔎 Aucune preuve manquante.")
+    ; writeln(" ❌ Preuves manquantes :"),
+      forall(member(M, Miss), describe_fact(M))
     ),
-    ( (sub_string(L,_,_,_,"vol") -> Crime=vol
-      ; sub_string(L,_,_,_,"escroquerie") -> Crime=escroquerie
-      ; sub_string(L,_,_,_,"assassin") -> Crime=assassinat
-      ) -> true
-    ; Crimes=[vol,assassinat,escroquerie],
-      format('Quel crime ?~n'), list_choices(Crimes,1),
-      read_line_to_string(user_input,R1), catch(number_string(N2,R1),_,fail), nth1(N2,Crimes,Crime)
-    ).
+    writeln("").
+
+% =====================
+% Traduction des faits
+% =====================
+
+describe_fact(has_alibi(S, Crime)) :-
+    format("   - ~w possede un alibi pour ~w.~n", [S, Crime]).
+describe_fact(has_motive(S, Crime)) :-
+    format("   - ~w avait un motif pour ~w.~n", [S, Crime]).
+describe_fact(was_near_crime_scene(S, Crime)) :-
+    format("   - ~w etait proche du lieu du ~w.~n", [S, Crime]).
+describe_fact(has_fingerprint_on_weapon(S, Crime)) :-
+    format("   - On a trouve les empreintes de ~w sur l’arme du ~w.~n", [S, Crime]).
+describe_fact(eyewitness_identification(S, Crime)) :-
+    format("   - Un temoin a identifie ~w dans l’affaire de ~w.~n", [S, Crime]).
+describe_fact(owns_fake_identity(S, Crime)) :-
+    format("   - ~w possedait une fausse identite liee à ~w.~n", [S, Crime]).
+describe_fact(has_bank_transaction(S, Crime)) :-
+    format("   - Une transaction bancaire suspecte relie ~w à l’~w.~n", [S, Crime]).
+describe_fact(_) :-
+    writeln("   - [Preuve non decrite].").

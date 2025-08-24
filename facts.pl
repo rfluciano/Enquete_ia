@@ -1,4 +1,3 @@
-
 :- dynamic suspect/1.
 :- dynamic has_alibi/2.
 :- dynamic has_motive/2.
@@ -8,13 +7,13 @@
 :- dynamic owns_fake_identity/2.
 :- dynamic has_bank_transaction/2.
 
-% faits statiques / initialisation
+% --- Suspects connus ---
 suspect(john).
 suspect(mary).
 suspect(alice).
-suspect(bob).
+suspect(elvis).
 
-% exemples de faits initiaux (modifiables en session)
+% --- Exemples de faits initiaux ---
 has_alibi(mary, assassinat).
 has_alibi(alice, escroquerie).
 
@@ -25,8 +24,8 @@ was_near_crime_scene(john, vol).
 was_near_crime_scene(mary, assassinat).
 
 has_fingerprint_on_weapon(john, vol).
-has_fingerprint_on_weapon(mary, assassinat).
+has_fingerprint_on_weapon(alice, assassinat).
 
 eyewitness_identification(john, assassinat).
-owns_fake_identity(mary, escroquerie).
-has_bank_transaction(mary, escroquerie).
+owns_fake_identity(alice, escroquerie).
+has_bank_transaction(alice, escroquerie).
